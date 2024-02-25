@@ -1,3 +1,13 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:67b29bd2a9c6b4909fa3dbc834cbedc0720ac596fa1f2f6b1f358e7b415b7426
-size 226
+---
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    orgId: 1
+    uid: oC9aIEdAs1
+    url: http://localhost:9090
+    basicAuth: true
+    basicAuthUser: admin
+    secureJsonData:
+      basicAuthPassword: password

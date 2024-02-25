@@ -1,0 +1,96 @@
+---
+- name: TestTask
+  hosts: centos
+  remote_user: root
+
+  tasks:
+    - name: Install packages
+      ansible.builtin.yum:
+        name:
+          - tar
+          - jq
+          - wget
+        state: latest
+
+    - name: Copy files
+      ansible.builtin.copy:
+        src: ./{{ item }}
+        dest: /tmp/{{ item }}
+      loop:
+        - grafana-enterprise-10.3.3-1.x86_64.rpm
+    #             |
+    #             V
+    # Тут раньше было несколько файлов суммой 200-300мб, потому что было
+    # проще их локально перекидывать, чем качать те несчастные 200 мегов каждый раз.
+    # Особенно когда у меня вайфай стал работать медленнее чем приложение райфазена
+    # А щас всё качается в скриптах, кроме графаны
+    # Причина? Графана залочила доступ к скачиванию своих продуктов в РФ, а в оф репе сентоса 8 последняя графана это 9.0.что-то там
+
+    - name: Install grafana
+      ansible.builtin.yum:
+        pkg: /tmp/grafana-enterprise-10.3.3-1.x86_64.rpm
+        state: present
+        disable_gpg_check: true
+
+    - name: Copy provision files
+      ansible.builtin.copy:
+        src: ./configs/{{ item }}
+        dest: /etc/grafana/provisioning/{{ item }}
+      loop:
+        - dashboards/testdb.yaml
+        - ".dashboards/Node Exporter Full.json"
+        - datasources/testds.yaml
+
+    - name: Copy .service files
+      ansible.builtin.copy:
+        src: ./configs/{{ item }}
+        dest: /etc/systemd/system/{{ item }}
+      loop:
+        - prometheus.service
+        - node_exporter.service
+
+    - name: Install services
+      ansible.builtin.script:
+        cmd: ./scripts/{{ item }}
+      loop:
+        - install_prometheus.sh
+        - install_node_exporter.sh
+
+    - name: Copy prometheus config files
+      ansible.builtin.copy:
+        src: ./configs/{{ item }}
+        dest: /etc/prometheus/{{ item }}
+      loop:
+        - web.yml
+        - prometheus.yml
+
+    - name: Start services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        daemon_reload: true
+        state: restarted
+      loop:
+        - node_exporter
+        - prometheus
+        - grafana-server
+
+    - name: Open ports
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        state: enabled
+      loop:
+        - 3000/tcp
+        - 9100/tcp
+        - 9090/tcp
+
+    # Без ребута графана работает максимально криво почему-то
+    # ошибки логина, рандомное разлогинивание, недостаток прав у админа
+    - name: Reboot? reboooot
+      ansible.builtin.reboot:
+        msg: Rebootin' all day long
+
+    - name: Add annotation
+      ansible.builtin.script:
+        cmd: ./scripts/add_annotation.sh

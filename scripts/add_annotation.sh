@@ -1,3 +1,26 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2df8366fc84f663b03012d2ccc85b6ccceeecab0b9ced5ce7f6d426209827bed
-size 401
+#!/bin/bash
+
+GRAFANA_CREDS="admin:admin"
+GRAFANA_HOST="http://localhost:3000"
+CURRENT_TIME="$(date +%s)"
+START_TIME="$CURRENT_TIME""000"
+
+sleep 10
+
+CURRENT_TIME="$(date +%s)"
+END_TIME="$CURRENT_TIME""000"
+
+
+BODY=$(cat <<EOF
+{
+  "dashboardUID": "rYdddlPWk",
+  "panelId": 77,
+  "tags": ["tagger"],
+  "text": "AAAAAAAAAA",
+  "time": $START_TIME,
+  "timeEnd": $END_TIME
+}
+EOF
+)
+
+curl -u "$GRAFANA_CREDS" -H "Content-Type: application/json" -XPOST -d "$BODY" "$GRAFANA_HOST/api/annotations"
